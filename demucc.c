@@ -123,13 +123,14 @@ int main(int ac, char** av)
 		uint8_t** pp = pmd.parts + i;
 		char partname = 'A' + i;
 
+		memset(pmd.stack, 0, sizeof pmd.stack);
 		pmd.drum_track = 0;
 		pmd.sp = 0;
 		pmd.len = 0;
 
 		printf("%c ", partname);
 			
-		while(!read_notes(&pmd, pp)) {
+		while(read_notes(&pmd, pp) == 0) {
 			//
 		}
 
@@ -150,7 +151,9 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
 	uint8_t n = read_u8(pp);
 
 	if(n >= 0xe0) {
-		read_commands(pmd, n, pp);
+		if(read_commands(pmd, n, pp) != 0) {
+			return 1;
+		}
 	} else if(n >= 0x80) {
 		if(pmd->drum_track == 1) {
 			int index = n - 0x80;
@@ -213,7 +216,10 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		// jump
 		uint16_t addr = read_u16(pp);
 		// FIXME: MMLコマンドとしてある？
-		*pp = pmd->buffer + addr;
+		// FIXME: 飛び先に L を挿入しなければならない
+		// *pp = pmd->buffer + addr;
+		//printf("L");
+		return 1;
 		break;
 	}
 	case 0x03:
