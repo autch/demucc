@@ -183,9 +183,9 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		int8_t vol = read_u8(pp);
 		// rel. expression
 		if(vol >= 0) {
-			mml_printf(pmd, "v+%d", vol);
+			mml_printf(pmd, ")%d", vol);
 		} else {
-			mml_printf(pmd, "v%d", vol);
+			mml_printf(pmd, "(%d", -vol);
 		}
 		break;
 	}
