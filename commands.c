@@ -19,7 +19,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 	{
 		// gate
 		int gate = read_u8(pp);
-		printf("q%d", -(24 * gate / 99 - 24));
+		mml_printf(pmd, "q%d", -(24 * gate / 99 - 24));
 		break;
 	}
 	case 0x02:
@@ -27,10 +27,8 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		// jump
 		uint16_t addr = read_u16(pp);
 		// FIXME: 飛び先に L を挿入しなければならない
-		// *pp = pmd->buffer + addr;
-		//printf("L");
+        pmd->return_addr = addr;
 		return 1;
-		break;
 	}
 	case 0x03:
 	{
@@ -57,7 +55,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		pmd->sp++;
 		// next のときにループ回数を覚えておくだけなので、ジャンプはしない
 
-		printf("[");
+		mml_printf(pmd, "[");
 		break;
 	}
 	case 0x05:
@@ -68,24 +66,24 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		pmd->sp = sp;
 		// スタックはループ回数を覚えるためだけに使ったので、ジャンプはしない
 
-		printf("]%d", times);
+		mml_printf(pmd, "]%d", times);
 		break;
 	}
 	case 0x06:
 		// transpose
-		printf("_%d", (int8_t)read_u8(pp));
+		mml_printf(pmd, "_%d", (int8_t)read_u8(pp));
 		break;
 	case 0x07:
 		// tempo
-		printf("T%d", read_u8(pp));
+		mml_printf(pmd, "T%d", read_u8(pp));
 		break;
 	case 0x08:
 		// inst
-		printf("@%d", read_u8(pp));
+		mml_printf(pmd, "@%d", read_u8(pp));
 		break;
 	case 0x09:
 		// volume
-		printf("V%d", read_u8(pp));
+		mml_printf(pmd, "V%d", read_u8(pp));
 		break;
 	case 0x0a:
 	{
@@ -95,12 +93,12 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		dr = read_u8(pp);
 		sl = read_u8(pp);
 		sr = read_u8(pp);
-		printf("E%d,%d,%d,%d", ar, dr, sl, sr);
+		mml_printf(pmd, "E%d,%d,%d,%d", ar, dr, sl, sr);
 		break;
 	}
 	case 0x0b:
 		// detune
-		printf("D%d", (int8_t)read_u8(pp));
+		mml_printf(pmd, "D%d", (int8_t)read_u8(pp));
 		break;
 	case 0x0c:
 	{
@@ -117,21 +115,22 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		break;
 	case 0x0e:
 		// portamento on
-		printf("{");
+		mml_printf(pmd, "{");
+        pmd->porsw = 1;
 		break;
 	case 0x0f:
     {
 		// portamento off
         char beats[16];
+        pmd->porsw = 0;
         tick2beat(pmd->porlen, beats);
-		printf("}%s", beats);
-        pmd->porlen = 0;
+		mml_printf(pmd, "}%s", beats);
 		break;
     }
 	case 0x10:
 		// drum track mode
 		pmd->drum_track = read_u8(pp);
-		printf("=%d", pmd->drum_track); // FIXME: 1 以外は未実装
+		mml_printf(pmd, "=%d", pmd->drum_track); // FIXME: 1 以外は未実装
 		break;
 	case 0x11:
 	{
@@ -141,7 +140,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		speed = read_u8(pp);
 		delay = read_u8(pp);
 		rate = read_u8(pp);
-		printf("Y%d,%d,%d,%d", depth, speed, delay, rate);
+		mml_printf(pmd, "Y%d,%d,%d,%d", depth, speed, delay, rate);
 		break;
 	}
 	case 0x12:
@@ -162,7 +161,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		break;
 	case 0x16:
 		// break
-		printf(":");
+		mml_printf(pmd, ":");
 		break;
 	case 0x17:
 		// nop
@@ -177,16 +176,16 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		break;
 	case 0x1a:
 		// expression
-		printf("v%d", read_u8(pp));
+		mml_printf(pmd, "v%d", read_u8(pp));
 		break;
 	case 0x1b:
 	{
 		int8_t vol = read_u8(pp);
 		// rel. expression
 		if(vol >= 0) {
-			printf("v+%d", vol);
+			mml_printf(pmd, "v+%d", vol);
 		} else {
-			printf("v%d", vol);
+			mml_printf(pmd, "v%d", vol);
 		}
 		break;
 	}

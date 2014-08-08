@@ -63,25 +63,39 @@ int main(int ac, char** av)
 		printf("#Title2 %s\n\n", pmd.title2);
 	}
 
+    pmd.mmlbuf = mmlbuf_new();
+
 	extract_drums(&pmd);
 
 	for(i = 0; i < pmd.num_parts; i++) {
-		uint8_t** pp = pmd.parts + i;
+		uint8_t* p = pmd.parts[i];
 		char partname = 'A' + i;
+        int return_addr;
 
 		if(pmd.parts[i] == NULL)
 			continue;
-
+       
+        /* pass 1 */
         reset_part_ctx(&pmd);
+        pmd.part = i;
+        mmlbuf_reset(pmd.mmlbuf);
+        read_notes(&pmd, &p);
+        // save return addr
+        return_addr = pmd.return_addr;
 
-		printf("%c ", partname);
-			
-		while(read_notes(&pmd, pp) == 0) {
-			//
-		}
-		printf("\n\n");
+        /* pass 2 */
+        p = pmd.parts[i];
+        reset_part_ctx(&pmd);
+        pmd.part = i;
+        pmd.return_addr = return_addr;
+        mmlbuf_reset(pmd.mmlbuf);
+
+        mml_printf(&pmd, "%c ", partname);
+        read_notes(&pmd, &p);
+		printf("%s\n\n", mmlbuf_buf(pmd.mmlbuf));
 	}
 
+    mmlbuf_free(pmd.mmlbuf);
 	free(pmd.parts);
 	free(pmd.buffer);
 
@@ -104,19 +118,20 @@ int extract_drums(struct pmd* pmd)
 			break;
 
 		get_drumname(i, drumname, sizeof drumname);
-		printf("!!%sg ", drumname);
 
         reset_part_ctx(pmd);
         pmd->drum_track = 1;
         pmd->sp = 0;
         pmd->len = 0;
+        pmd->part = -1;
+        mmlbuf_reset(pmd->mmlbuf);
+
+		mml_printf(pmd, "!!%sg ", drumname);
 	
 		p = pmd->buffer + *pd;
-		while(read_notes(pmd, &p) == 0) {
-			//
-		}
+		read_notes(pmd, &p);
 
-		printf("\n");
+        printf("%s\n", mmlbuf_buf(pmd->mmlbuf));
 
 		pd++;
 		i++;
@@ -127,62 +142,4 @@ int extract_drums(struct pmd* pmd)
 	return 0;
 }
 
-/**
- * @return パート終了のとき 1, そうでないとき 0
- */
-int read_notes(struct pmd* pmd, uint8_t** pp)
-{
-	uint8_t n = read_u8(pp);
-
-	if(n >= 0xe0) {
-		if(read_commands(pmd, n, pp) != 0) {
-			return 1;
-		}
-	} else if(n >= 0x80) {
-		if(pmd->drum_track == 1) {
-			int index = n - 0x80;
-			char drumname[DRUMNAME_MAX];
-            char beats[16];
-
-			get_drumname(index, drumname, sizeof drumname);
-            tick2beat(pmd->len, beats);
-			printf("!%sg ", drumname);
-		} else {
-			int note = n - 0x80 + 12;
-			get_note(pmd, note, pmd->len);
-		}					
-	} else if(n != 0) {
-        char beats[16];
-		if(n == 127) {
-			n = read_u8(pp);
-			if(n < 127) n += 256;
-		}
-        if(pmd->porpd != 0) {
-            pmd->porlen = n;
-        } else {
-            if(pmd->len != n) {
-                pmd->len = n;
-                tick2beat(pmd->len, beats);
-                printf("l%s", beats);
-            }
-        }
-	} else {
-		// n == 0
-		int lsp = pmd->sp;
-		if(lsp == 0) {
-			return 1;
-		}
-		
-		lsp -= 3;
-		if(--pmd->stack[lsp] != 0) {
-            // repeat
-			*pp = pmd->buffer + pmd->stack[lsp + 2];
-		} else {
-            // return
-			*pp = pmd->buffer + pmd->stack[lsp + 1];
-			pmd->sp = lsp;
-		}
-	}
-	return 0;
-}
 

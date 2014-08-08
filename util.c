@@ -34,7 +34,16 @@ int tick2beat(int tick, char* notes)
     char* p = notes;
     int curlen = TPQN * 4;
     int meas = 1;
+    int b;
 
+    if(tick != 0) {
+        b = (TPQN*4) / tick;
+        if(b != 0 && (TPQN * 4) / b == tick) {
+            sprintf(p, "%d", b);
+            return 0;
+        }
+    }
+    
     while(tick != 0) {
         if(curlen <= tick) {
             tick -= curlen;
@@ -47,11 +56,13 @@ int tick2beat(int tick, char* notes)
     while(tick > 0) {
         if(curlen <= tick) {
             tick -= curlen;
-            p += sprintf(p, ".");
+            *p++ = '.';
         }
         curlen /= 2;
         meas *= 2;
     }
+
+    *p++ = '\0';
 
     return 0;
 }
@@ -78,20 +89,21 @@ void get_note(struct pmd* pmd, int note, int tick)
             case 0:
                 break;
             case 1:
-                printf(">");
+                mml_printf(pmd, ">");
                 break;
             case -1:
-                printf("<");
+                mml_printf(pmd, "<");
                 break;
             default:
-                printf("o%d", oct);
+                mml_printf(pmd, "o%d", oct);
             }
         }
         tick2beat(tick, beats);
-		printf("%s%s", (note == -1) ? "r" : key[k], pmd->legato ? "&" : "");
+        if(pmd->porsw) beats[0] = '\0';
+		mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, pmd->legato ? "&" : "");
 	} else {
 		// for use in drums
-		printf("?o%d%s%s", oct, key[k], pmd->legato ? "&" : "");
+		mml_printf(pmd, "?o%d%s%s", oct, key[k], pmd->legato ? "&" : "");
 	}
 }
 
@@ -119,6 +131,44 @@ void reset_part_ctx(struct pmd* pmd)
     pmd->sp = 0;
     pmd->len = 4;
     pmd->oct = -1;
+    pmd->porsw = 0;
     pmd->porpd = 0;
     pmd->porlen = 0;
+    pmd->column = 0;
+    pmd->return_addr = 0;
 }
+
+int mml_vprintf(struct pmd* pmd, char* format, va_list ap)
+{
+    va_list aq;
+    int ret, required;
+
+    va_copy(aq, ap);
+    required = vsnprintf(NULL, 0, format, aq);
+    va_end(aq);
+    if(pmd->part >= 0 && pmd->column + required >= MML_COLUMNS) {
+        ret = mmlbuf_append(pmd->mmlbuf, "\n%c ", 'A' + pmd->part);
+        if(ret < 0) return ret;
+        pmd->column = ret - 1;
+    }
+    va_copy(aq, ap);
+    ret = mmlbuf_appendv(pmd->mmlbuf, format, aq);
+    va_end(aq);
+    if(ret >= 0) {
+        pmd->column += ret;
+    }
+    
+    return ret;
+}
+
+int mml_printf(struct pmd* pmd, char* format, ...)
+{
+    va_list ap;
+    int ret;
+
+    va_start(ap, format);
+    ret = mml_vprintf(pmd, format, ap);
+    va_end(ap);
+    return ret;
+}
+
