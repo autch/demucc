@@ -7,6 +7,7 @@
 #include "demucc.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 uint16_t read_u16(uint8_t** pp)
 {
