@@ -32,6 +32,7 @@ struct pmd {
 	int len;
 	int drum_track;
 	int legato;
+    int oct;
 };
 
 uint16_t read_u16(uint8_t** pp)
@@ -54,9 +55,41 @@ uint8_t read_u8(uint8_t** pp)
 	return t;
 }
 
-int tick2beat(int tick)
+// BUG: 連符と付点がつけられない
+int tick2beat(int tick, char* notes)
 {
-	return (4 * TPQN) / tick;
+    char* p = notes;
+    int curlen = TPQN * 4;
+    int meas = 1;
+
+/*
+  if(tick % 3 == 0
+  || tick % 5 == 0
+  || tick % 7 == 0) {
+  sprintf(p, "%%%d", tick);
+  return 0;
+  }
+*/
+    while(tick != 0) {
+        if(curlen <= tick) {
+            tick -= curlen;
+            p += sprintf(p, "%d", meas);
+            break;
+        }
+        curlen /= 2;
+        meas *= 2;
+    }
+    while(tick > 0) {
+        if(curlen <= tick) {
+            tick -= curlen;
+            p += sprintf(p, ".");
+        }
+        curlen /= 2;
+        meas *= 2;
+    }
+    // FIXME: n連符ってこれで出る？
+
+    return 0;
 }
 
 void get_note(struct pmd* pmd, int note, int tick)
@@ -64,12 +97,32 @@ void get_note(struct pmd* pmd, int note, int tick)
 	// o4c = 60
 	char* key[] = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
 	int k = note % 12, oct = (note - 12) / 12;
+    int oct_diff;
+    char beats[16];
 
 	if(tick > 0) {
-		printf("o%d%s%d%s", oct, key[k], tick2beat(tick), pmd->legato ? "&" : "");
+		// FIXME: 連符で割り切れないときは直接 %tick で指定する
+        if(note > 0) {
+            oct_diff = oct - pmd->oct;
+            pmd->oct = oct;
+            switch(oct_diff) {
+            case 0:
+                break;
+            case 1:
+                printf(">");
+                break;
+            case -1:
+                printf("<");
+                break;
+            default:
+                printf("o%d", oct);
+            }
+        }
+        tick2beat(tick, beats);
+		printf("%s%s", (note == -1) ? "r" : key[k], pmd->legato ? "&" : "");
 	} else {
 		// for use in drums
-		printf("o%d%s%s", oct, key[k], pmd->legato ? "&" : "");
+		printf("?o%d%s%s", oct, key[k], pmd->legato ? "&" : "");
 	}
 }
 
@@ -88,6 +141,15 @@ int get_drumname(int note, char* buffer, size_t size)
 	*p++ = '\0';
 
 	return p - buffer;
+}
+
+void reset_part_ctx(struct pmd* pmd)
+{
+    memset(pmd->stack, 0, sizeof pmd->stack);
+    pmd->drum_track = 0;
+    pmd->sp = 0;
+    pmd->len = 4;
+    pmd->oct = -1;
 }
 
 int read_notes(struct pmd* pmd, uint8_t** pp);
@@ -148,10 +210,6 @@ int main(int ac, char** av)
 		printf("#Title2 %s\n\n", pmd.title2);
 	}
 
-	pmd.drum_track = 1;
-	pmd.sp = 0;
-	pmd.len = 0;
-	
 	extract_drums(&pmd);
 
 	for(i = 0; i < pmd.num_parts; i++) {
@@ -161,10 +219,7 @@ int main(int ac, char** av)
 		if(pmd.parts[i] == NULL)
 			continue;
 
-		memset(pmd.stack, 0, sizeof pmd.stack);
-		pmd.drum_track = 0;
-		pmd.sp = 0;
-		pmd.len = 4;
+        reset_part_ctx(&pmd);
 
 		printf("%c ", partname);
 			
@@ -198,8 +253,12 @@ int extract_drums(struct pmd* pmd)
 		get_drumname(i, drumname, sizeof drumname);
 		printf("!!%sg ", drumname);
 
+        reset_part_ctx(pmd);
+        pmd->drum_track = 1;
+        pmd->sp = 0;
+        pmd->len = 0;
+	
 		p = pmd->buffer + *pd;
-
 		while(read_notes(pmd, &p) == 0) {
 			//
 		}
@@ -230,20 +289,26 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
 		if(pmd->drum_track == 1) {
 			int index = n - 0x80;
 			char drumname[DRUMNAME_MAX];
+            char beats[16];
 
 			get_drumname(index, drumname, sizeof drumname);
-			printf("!%sg%d ", drumname, tick2beat(pmd->len));
+            tick2beat(pmd->len, beats);
+			printf("!%sg ", drumname);
 		} else {
 			int note = n - 0x80 + 12;
 			get_note(pmd, note, pmd->len);
 		}					
 	} else if(n != 0) {
+        char beats[16];
 		if(n == 127) {
 			n = read_u8(pp);
 			if(n < 127) n += 256;
 		}
-		pmd->len = n;
-		// printf("l%d", tick2beat(pmd.len));
+        if(pmd->len != n) {
+            pmd->len = n;
+            tick2beat(pmd->len, beats);
+            printf("l%s", beats);
+        }
 	} else {
 		// n == 0
 		int lsp = pmd->sp;
@@ -253,8 +318,10 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
 		
 		lsp -= 3;
 		if(--pmd->stack[lsp] != 0) {
+            // repeat
 			*pp = pmd->buffer + pmd->stack[lsp + 2];
 		} else {
+            // return
 			*pp = pmd->buffer + pmd->stack[lsp + 1];
 			pmd->sp = lsp;
 		}
@@ -269,7 +336,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 	switch(cmd) {
 	case 0x00:
 		// rest
-		printf("r%d", tick2beat(pmd->len));
+        get_note(pmd, -1, pmd->len);
 		break;
 	case 0x01:
 	{
@@ -361,17 +428,14 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 	case 0x0c:
 	{
 		// note 2
-		int note;
-
-		note = read_u8(pp);
+		int note = read_u8(pp);
 		if(note >= 0x80) note -= 0x80 - 12;
-						
-		get_note(pmd, note, pmd->len);
+        get_note(pmd, note, pmd->len);
 		break;
 	}
 	case 0x0d:
 		// portamento params
-		printf("P%d,%d", read_u8(pp), read_u8(pp));
+		printf("P%d,%d", read_u8(pp), read_u8(pp)); // FIXME: portamento off のときに長さが必要
 		break;
 	case 0x0e:
 		// portamento on
@@ -379,12 +443,12 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		break;
 	case 0x0f:
 		// portamento off
-		printf("}");
+		printf("}"); // FIXME: 何分音符分かけるかの指定が必要
 		break;
 	case 0x10:
 		// drum track mode
-		printf("=%d", read_u8(pp));
-		pmd->drum_track = 1;
+		pmd->drum_track = read_u8(pp);
+		printf("=%d", pmd->drum_track); // FIXME: 1 以外は未実装
 		break;
 	case 0x11:
 	{
