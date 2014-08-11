@@ -16,6 +16,9 @@
 #define MMLBUF_SIZE (8 * 1024)
 #define MML_COLUMNS 78
 
+#define TRATTR_DRUMS 1
+#define TRATTR_NOOFF 2
+
 struct mmlbuf {
     size_t size;
     char* buf;
@@ -38,13 +41,14 @@ struct pmd {
 	int stack[STACK_SIZE];
 	int sp;
 	int len;
-	int drum_track;
+	int track_attr;
 	int legato;
     int oct;
     int porsw;
     int porpd;
     int porlen;
     int return_addr;
+    int tick;
 
     struct mmlbuf* mmlbuf;
     int column;
@@ -81,7 +85,5 @@ int mmlbuf_append(struct mmlbuf* mmlbuf, char* format, ...)
     __attribute__((format(printf, 2, 3)));
 int mmlbuf_appendv(struct mmlbuf* mmlbuf, char* format, va_list ap)
     __attribute__((format(printf, 2, 0)));
-
-
 
 #endif // !demucc_h

@@ -120,7 +120,7 @@ int extract_drums(struct pmd* pmd)
 		get_drumname(i, drumname, sizeof drumname);
 
         reset_part_ctx(pmd);
-        pmd->drum_track = 1;
+        pmd->track_attr = TRATTR_DRUMS;
         pmd->sp = 0;
         pmd->len = 0;
         pmd->part = -1;

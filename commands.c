@@ -23,13 +23,9 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
 		break;
 	}
 	case 0x02:
-	{
 		// jump
-		uint16_t addr = read_u16(pp);
-		// FIXME: 飛び先に L を挿入しなければならない
-        pmd->return_addr = addr;
+        pmd->return_addr = read_u16(pp);
 		return 1;
-	}
 	case 0x03:
 	{
 		// call
@@ -125,12 +121,17 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
         pmd->porsw = 0;
         tick2beat(pmd->porlen, beats);
 		mml_printf(pmd, "}%s", beats);
+
+        pmd->tick = (pmd->tick + pmd->porlen) % TIMEBASE;
+        if(pmd->tick == 0) {
+            mml_printf(pmd, " ");
+        }
 		break;
     }
 	case 0x10:
-		// drum track mode
-		pmd->drum_track = read_u8(pp);
-		mml_printf(pmd, "=%d", pmd->drum_track); // FIXME: 1 以外は未実装
+		// パート属性
+		pmd->track_attr = read_u8(pp);
+		mml_printf(pmd, "=%d", pmd->track_attr); // FIXME: 1 以外は未実装
 		break;
 	case 0x11:
 	{

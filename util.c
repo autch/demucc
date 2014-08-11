@@ -29,17 +29,16 @@ uint8_t read_u8(uint8_t** pp)
 	return t;
 }
 
-// FIXME: n連符ってこれで出る？
 int tick2beat(int tick, char* notes)
 {
     char* p = notes;
-    int curlen = TPQN * 4;
+    int curlen = TIMEBASE;
     int meas = 1;
     int b;
 
     if(tick != 0) {
-        b = (TPQN*4) / tick;
-        if(b != 0 && (TPQN * 4) / b == tick) {
+        b = TIMEBASE / tick;
+        if(b != 0 && TIMEBASE / b == tick) {
             sprintf(p, "%d", b);
             return 0;
         }
@@ -71,7 +70,7 @@ int tick2beat(int tick, char* notes)
 void get_note(struct pmd* pmd, int note, int tick)
 {
 	// o4c = 60
-	char* key[] = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
+	const static char* key[] = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
 	int k = note % 12, oct = (note - 12) / 12;
     int oct_diff;
     char beats[16];
@@ -102,6 +101,13 @@ void get_note(struct pmd* pmd, int note, int tick)
         tick2beat(tick, beats);
         if(pmd->porsw) beats[0] = '\0';
 		mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, pmd->legato ? "&" : "");
+
+        if(pmd->porsw == 0) {
+            pmd->tick = (pmd->tick + pmd->len) % TIMEBASE;
+            if(pmd->tick == 0) {
+                mml_printf(pmd, " ");
+            }
+        }
 	} else {
 		// for use in drums
 		mml_printf(pmd, "?o%d%s%s", oct, key[k], pmd->legato ? "&" : "");
@@ -128,7 +134,8 @@ int get_drumname(int note, char* buffer, size_t size)
 void reset_part_ctx(struct pmd* pmd)
 {
     memset(pmd->stack, 0, sizeof pmd->stack);
-    pmd->drum_track = 0;
+    pmd->tick = 0;
+    pmd->track_attr = 0;
     pmd->sp = 0;
     pmd->len = 4;
     pmd->oct = -1;

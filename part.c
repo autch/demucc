@@ -26,20 +26,24 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
                 return 1;
             }
         } else if(n >= 0x80) {
-            if(pmd->drum_track == 1) {
+            if(pmd->track_attr & TRATTR_DRUMS) {
                 int index = n - 0x80;
                 char drumname[DRUMNAME_MAX];
                 char beats[16];
 
                 get_drumname(index, drumname, sizeof drumname);
                 tick2beat(pmd->len, beats);
-                mml_printf(pmd, "!%sg%s ", drumname, beats);
+                mml_printf(pmd, "!%sg%s", drumname, beats);
+                
+                pmd->tick = (pmd->tick + pmd->len) % TIMEBASE;
+                if(pmd->tick == 0) {
+                    mml_printf(pmd, " ");
+                }
             } else {
                 int note = n - 0x80 + 12;
                 get_note(pmd, note, pmd->len);
             }					
         } else if(n != 0) {
-            // char beats[16];
             if(n == 127) {
                 n = read_u8(pp);
                 if(n < 127) n += 256;
@@ -49,9 +53,7 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
             } else {
                 if(pmd->len != n) {
                     pmd->len = n;
-                    //tick2beat(pmd->len, beats);
-                    // mucc は l で付点を書くとバグる
-                    //mml_printf(pmd, "l%s", beats);
+                    // mucc は l で付点を書くとバグるので、ここでは何もしない
                 }
             }
         } else {
