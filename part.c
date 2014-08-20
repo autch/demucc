@@ -71,6 +71,7 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
                 // return
                 *pp = pmd->buffer + pmd->stack[lsp + 1];
                 pmd->sp = lsp;
+                mml_newline(pmd);
             }
         }
     }

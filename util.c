@@ -143,6 +143,7 @@ void reset_part_ctx(struct pmd* pmd)
     pmd->porpd = 0;
     pmd->porlen = 0;
     pmd->column = 0;
+    pmd->newline = 0;
     pmd->return_addr = 0;
 }
 
@@ -154,9 +155,10 @@ int mml_vprintf(struct pmd* pmd, char* format, va_list ap)
     va_copy(aq, ap);
     required = vsnprintf(NULL, 0, format, aq);
     va_end(aq);
-    if(pmd->part >= 0 && pmd->column + required >= MML_COLUMNS) {
+    if(pmd->part >= 0 && (pmd->newline != 0 || pmd->column + required >= MML_COLUMNS)) {
         ret = mmlbuf_append(pmd->mmlbuf, "\n%c ", 'A' + pmd->part);
         if(ret < 0) return ret;
+        pmd->newline = 0;
         pmd->column = ret - 1;
     }
     va_copy(aq, ap);
@@ -167,6 +169,12 @@ int mml_vprintf(struct pmd* pmd, char* format, va_list ap)
     }
     
     return ret;
+}
+
+int mml_newline(struct pmd* pmd)
+{
+    pmd->newline = 1;
+    return 0;
 }
 
 int mml_printf(struct pmd* pmd, char* format, ...)

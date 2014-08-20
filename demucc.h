@@ -52,6 +52,7 @@ struct pmd {
 
     struct mmlbuf* mmlbuf;
     int column;
+    int newline;
 };
 
 int read_notes(struct pmd* pmd, uint8_t** pp);
@@ -69,6 +70,7 @@ int mml_printf(struct pmd* pmd, char* format, ...)
     __attribute__((format(printf, 2, 3)));
 int mml_vprintf(struct pmd* pmd, char* format, va_list vp)
     __attribute__((format(printf, 2, 0)));
+int mml_newline(struct pmd* pmd);
 
 /* commands.c */
 int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp);
