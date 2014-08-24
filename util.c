@@ -11,22 +11,22 @@
 
 uint16_t read_u16(uint8_t** pp)
 {
-	uint16_t t;
-	uint8_t* p = *pp;
+    uint16_t t;
+    uint8_t* p = *pp;
 
-	t = p[1] << 8 | p[0];
-	*pp += 2;
-	return t;
+    t = p[1] << 8 | p[0];
+    *pp += 2;
+    return t;
 }
 
 uint8_t read_u8(uint8_t** pp)
 {
-	uint8_t t;
-	uint8_t* p = *pp;
+    uint8_t t;
+    uint8_t* p = *pp;
 
-	t = *p;
-	*pp += 1;
-	return t;
+    t = *p;
+    *pp += 1;
+    return t;
 }
 
 int tick2beat(int tick, char* notes)
@@ -69,9 +69,9 @@ int tick2beat(int tick, char* notes)
 
 void get_note(struct pmd* pmd, int note, int tick)
 {
-	// o4c = 60
-	const static char* key[] = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
-	int k = note % 12, oct = (note - 12) / 12;
+    // o4c = 60
+    const static char* key[] = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
+    int k = note % 12, oct = (note - 12) / 12;
     int oct_diff;
     char beats[16];
 
@@ -81,7 +81,7 @@ void get_note(struct pmd* pmd, int note, int tick)
         get_note(pmd, note + porpd, tick);
     }
 
-	if(tick > 0) {
+    if(tick > 0) {
         if(note > 0) {
             oct_diff = oct - pmd->oct;
             pmd->oct = oct;
@@ -100,7 +100,7 @@ void get_note(struct pmd* pmd, int note, int tick)
         }
         tick2beat(tick, beats);
         if(pmd->porsw) beats[0] = '\0';
-		mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, pmd->legato ? "&" : "");
+        mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, pmd->legato ? "&" : "");
 
         if(pmd->porsw == 0) {
             pmd->tick = (pmd->tick + pmd->len) % TIMEBASE;
@@ -108,27 +108,27 @@ void get_note(struct pmd* pmd, int note, int tick)
                 mml_printf(pmd, " ");
             }
         }
-	} else {
-		// for use in drums
-		mml_printf(pmd, "?o%d%s%s", oct, key[k], pmd->legato ? "&" : "");
-	}
+    } else {
+        // for use in drums
+        mml_printf(pmd, "?o%d%s%s", oct, key[k], pmd->legato ? "&" : "");
+    }
 }
 
 // ドラムシーケンス番号から適当にドラムパート名をでっちあげる
 int get_drumname(int note, char* buffer, size_t size)
 {
-	char* p = buffer;
-	char* pe = buffer + size;
+    char* p = buffer;
+    char* pe = buffer + size;
 
-	while(p != pe) {
-		*p++ = 'a' + (note % 26);
-		note /= 26;
-		if(note == 0) break;
-	}
+    while(p != pe) {
+        *p++ = 'a' + (note % 26);
+        note /= 26;
+        if(note == 0) break;
+    }
 
-	*p++ = '\0';
+    *p++ = '\0';
 
-	return p - buffer;
+    return p - buffer;
 }
 
 void reset_part_ctx(struct pmd* pmd)
@@ -188,3 +188,27 @@ int mml_printf(struct pmd* pmd, char* format, ...)
     return ret;
 }
 
+int crlf2semicolon(char* string, char** ppoutbuf)
+{
+    size_t size;
+    char* outbuf;
+    char* p = string;
+    char* dp;
+
+    size = strlen(string);
+    dp = outbuf = calloc(size + 1, 1);
+
+    while(*p != '\0') {
+        if(*p == '\n') {
+            *dp++ = ';';
+        } else {
+            *dp++ = *p;
+        }
+        p++;
+    }
+    *dp++ = '\0';
+
+    *ppoutbuf = outbuf;
+    
+    return p - string;
+}

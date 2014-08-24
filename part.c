@@ -42,7 +42,7 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
             } else {
                 int note = n - 0x80 + 12;
                 get_note(pmd, note, pmd->len);
-            }					
+            }                   
         } else if(n != 0) {
             if(n == 127) {
                 n = read_u8(pp);
@@ -62,7 +62,7 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
             if(lsp == 0) {
                 return 1;
             }
-		
+        
             lsp -= 3;
             if(--pmd->stack[lsp] != 0) {
                 // repeat
@@ -75,5 +75,5 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
             }
         }
     }
-	return 0;
+    return 0;
 }

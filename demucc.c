@@ -11,69 +11,77 @@
 
 int main(int ac, char** av)
 {
-	FILE* fp = NULL;
-	struct pmd pmd;
-	char* filename = NULL;
-	uint8_t* p;
-	int i;
+    FILE* fp = NULL;
+    struct pmd pmd;
+    char* filename = NULL;
+    uint8_t* p;
+    int i;
 
-	memset(&pmd, 0, sizeof pmd);
+    memset(&pmd, 0, sizeof pmd);
 
-	if(ac != 2) {
-		printf("Usage: %s filename.pmd\n", *av);
-		return -1;
-	}
+    if(ac != 2) {
+        printf("Usage: %s filename.pmd\n", *av);
+        return -1;
+    }
 
-	filename = *++av;
+    filename = *++av;
 
-	if((fp = fopen(filename, "rb")) == NULL) {
-		perror(filename);
-		return 1;
-	} 
+    if((fp = fopen(filename, "rb")) == NULL) {
+        perror(filename);
+        return 1;
+    } 
 
-	fseek(fp, 0, SEEK_END);
-	pmd.buffer_size = ftell(fp);
-	rewind(fp);
+    fseek(fp, 0, SEEK_END);
+    pmd.buffer_size = ftell(fp);
+    rewind(fp);
 
-	pmd.buffer = p = malloc(pmd.buffer_size);
-	fread(pmd.buffer, 1, pmd.buffer_size, fp);
-	fclose(fp);
+    pmd.buffer = p = malloc(pmd.buffer_size);
+    fread(pmd.buffer, 1, pmd.buffer_size, fp);
+    fclose(fp);
 
-	if((pmd.num_parts = read_u8(&p)) == 0) {
-		pmd.num_parts = read_u8(&p);
-	}
+    if((pmd.num_parts = read_u8(&p)) == 0) {
+        pmd.num_parts = read_u8(&p);
+    }
 
-	pmd.parts = calloc(pmd.num_parts, sizeof(uint8_t*));
+    pmd.parts = calloc(pmd.num_parts, sizeof(uint8_t*));
 
-	for(i = 0; i < pmd.num_parts; i++) {
-		uint16_t addr = read_u16(&p);
-		if(addr != 0) {
-			pmd.parts[i] = pmd.buffer + addr;
-		}
-	}
+    for(i = 0; i < pmd.num_parts; i++) {
+        uint16_t addr = read_u16(&p);
+        if(addr != 0) {
+            pmd.parts[i] = pmd.buffer + addr;
+        }
+    }
 
-	pmd.drums = pmd.buffer + read_u16(&p);
-	pmd.title = (char*)(pmd.buffer + read_u16(&p));
-	pmd.title2 = (char*)(pmd.buffer + read_u16(&p));
+    pmd.drums = pmd.buffer + read_u16(&p);
+    pmd.title = (char*)(pmd.buffer + read_u16(&p));
+    pmd.title2 = (char*)(pmd.buffer + read_u16(&p));
 
-	if(pmd.title != (char*)pmd.buffer) {
-		printf("#Title %s\n", pmd.title);
-	}
-	if(pmd.title2 != (char*)pmd.buffer) {
-		printf("#Title2 %s\n\n", pmd.title2);
-	}
+    if(pmd.title != (char*)pmd.buffer) {
+        char* title = NULL;
+
+        crlf2semicolon(pmd.title, &title);
+        printf("#Title %s\n", title);
+        free(title);
+    }
+    if(pmd.title2 != (char*)pmd.buffer) {
+        char* title = NULL;
+
+        crlf2semicolon(pmd.title2, &title);
+        printf("#Title2 %s\n", title);
+        free(title);
+    }
 
     pmd.mmlbuf = mmlbuf_new();
 
-	extract_drums(&pmd);
+    extract_drums(&pmd);
 
-	for(i = 0; i < pmd.num_parts; i++) {
-		uint8_t* p = pmd.parts[i];
-		char partname = 'A' + i;
+    for(i = 0; i < pmd.num_parts; i++) {
+        uint8_t* p = pmd.parts[i];
+        char partname = 'A' + i;
         int return_addr;
 
-		if(pmd.parts[i] == NULL)
-			continue;
+        if(pmd.parts[i] == NULL)
+            continue;
        
         /* pass 1 */
         reset_part_ctx(&pmd);
@@ -92,32 +100,32 @@ int main(int ac, char** av)
 
         mml_printf(&pmd, "%c ", partname);
         read_notes(&pmd, &p);
-		printf("%s\n\n", mmlbuf_buf(pmd.mmlbuf));
-	}
+        printf("%s\n\n", mmlbuf_buf(pmd.mmlbuf));
+    }
 
     mmlbuf_free(pmd.mmlbuf);
-	free(pmd.parts);
-	free(pmd.buffer);
+    free(pmd.parts);
+    free(pmd.buffer);
 
-	return 0;
+    return 0;
 }
 
 int extract_drums(struct pmd* pmd)
 {
-	uint16_t* pd = (uint16_t*)pmd->drums;
-	uint8_t* p;
-	int i = 0;
-	char drumname[DRUMNAME_MAX];
+    uint16_t* pd = (uint16_t*)pmd->drums;
+    uint8_t* p;
+    int i = 0;
+    char drumname[DRUMNAME_MAX];
 
-	if(pmd->drums == pmd->buffer) {
-		return 0;
-	}
+    if(pmd->drums == pmd->buffer) {
+        return 0;
+    }
 
-	while(1) {
-		if((uint8_t*)pd >= pmd->buffer + pmd->buffer_size)
-			break;
+    while(1) {
+        if((uint8_t*)pd >= pmd->buffer + pmd->buffer_size)
+            break;
 
-		get_drumname(i, drumname, sizeof drumname);
+        get_drumname(i, drumname, sizeof drumname);
 
         reset_part_ctx(pmd);
         pmd->track_attr = TRATTR_DRUMS;
@@ -126,20 +134,20 @@ int extract_drums(struct pmd* pmd)
         pmd->part = -1;
         mmlbuf_reset(pmd->mmlbuf);
 
-		mml_printf(pmd, "!!%sg ", drumname);
-	
-		p = pmd->buffer + *pd;
-		read_notes(pmd, &p);
+        mml_printf(pmd, "!!%sg ", drumname);
+    
+        p = pmd->buffer + *pd;
+        read_notes(pmd, &p);
 
         printf("%s\n", mmlbuf_buf(pmd->mmlbuf));
 
-		pd++;
-		i++;
-	}
+        pd++;
+        i++;
+    }
 
-	printf("\n");
+    printf("\n");
 
-	return 0;
+    return 0;
 }
 
 

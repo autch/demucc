@@ -6,8 +6,8 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-#define LogL(format, ...) \
-	fprintf(stderr, ("%s:%s(%d): " format "\n"), __FILE__, __func__, __LINE__, ##__VA_ARGS__)
+#define LogL(format, ...)                                               \
+    fprintf(stderr, ("%s:%s(%d): " format "\n"), __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 
 #define TPQN 24
 #define TIMEBASE (TPQN * 4)
@@ -26,23 +26,23 @@ struct mmlbuf {
 };
 
 struct pmd {
-	/* global context */
-	uint8_t* buffer;
-	long buffer_size;
-	uint8_t* p;
-	uint8_t** parts;
-	uint8_t* drums;
-	int num_parts;
-	char* title;
-	char* title2;
+    /* global context */
+    uint8_t* buffer;
+    long buffer_size;
+    uint8_t* p;
+    uint8_t** parts;
+    uint8_t* drums;
+    int num_parts;
+    char* title;
+    char* title2;
 
-	/* current part context */
+    /* current part context */
     int part;
-	int stack[STACK_SIZE];
-	int sp;
-	int len;
-	int track_attr;
-	int legato;
+    int stack[STACK_SIZE];
+    int sp;
+    int len;
+    int track_attr;
+    int legato;
     int oct;
     int porsw;
     int porpd;
@@ -71,6 +71,7 @@ int mml_printf(struct pmd* pmd, char* format, ...)
 int mml_vprintf(struct pmd* pmd, char* format, va_list vp)
     __attribute__((format(printf, 2, 0)));
 int mml_newline(struct pmd* pmd);
+int crlf2semicolon(char* string, char** outbuf);
 
 /* commands.c */
 int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp);
