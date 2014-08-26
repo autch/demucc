@@ -41,7 +41,7 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
                 }
             } else {
                 int note = n - 0x80 + 12;
-                get_note(pmd, note, pmd->len);
+                get_note(pmd, note, pmd->len, 0);
             }                   
         } else if(n != 0) {
             if(n == 127) {
@@ -49,7 +49,7 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
                 if(n < 127) n += 256;
             }
             if(pmd->porsw != 0) {
-                pmd->porlen = n;
+                pmd->porlen = pmd->len = n;
             } else {
                 if(pmd->len != n) {
                     pmd->len = n;

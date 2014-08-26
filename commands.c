@@ -13,13 +13,13 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
     switch(cmd) {
     case 0x00:
         // rest
-        get_note(pmd, -1, pmd->len);
+        get_note(pmd, -1, pmd->len, 0);
         break;
     case 0x01:
     {
         // gate
         int gate = read_u8(pp);
-        mml_printf(pmd, "q%d", -(24 * gate / 99 - 24));
+        mml_printf(pmd, "q%d", -((24 * gate - 2374) / 99));
         break;
     }
     case 0x02:
@@ -101,7 +101,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
         // note 2
         int note = read_u8(pp);
         if(note >= 0x80) note -= 0x80 - 12;
-        get_note(pmd, note, pmd->len);
+        get_note(pmd, note, pmd->len, 0);
         break;
     }
     case 0x0d:
@@ -120,7 +120,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
         char beats[16];
         pmd->porsw = 0;
         tick2beat(pmd->porlen, beats);
-        mml_printf(pmd, "}%s", beats);
+        mml_printf(pmd, "}%s%s", beats, pmd->legato ? "&" : "");
 
         pmd->tick = (pmd->tick + pmd->porlen) % TIMEBASE;
         if(pmd->tick == 0) {

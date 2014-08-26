@@ -32,20 +32,23 @@ uint8_t read_u8(uint8_t** pp)
 
 int tick2beat(int tick, char* notes)
 {
+    int initial_tick = tick;
     char* p = notes;
     int curlen = TIMEBASE;
     int meas = 1;
     int b;
 
+    // n 分音符として割り切れるなら一発
     if(tick != 0) {
         b = TIMEBASE / tick;
-        if(b != 0 && TIMEBASE / b == tick) {
+        if(b != 0 && TIMEBASE / b == tick && TIMEBASE % tick == 0) {
             sprintf(p, "%d", b);
             return 0;
         }
     }
     
-    while(tick != 0) {
+    // 最大の音長を引く
+    while(tick != 0 && curlen != 0) {
         if(curlen <= tick) {
             tick -= curlen;
             p += sprintf(p, "%d", meas);
@@ -54,7 +57,8 @@ int tick2beat(int tick, char* notes)
         curlen /= 2;
         meas *= 2;
     }
-    while(tick > 0) {
+    // 残りを付点で足す
+    while(tick > 0 && curlen != 0) {
         if(curlen <= tick) {
             tick -= curlen;
             *p++ = '.';
@@ -63,12 +67,17 @@ int tick2beat(int tick, char* notes)
         meas *= 2;
     }
 
+    // これだけやっても割り切れなかった
+    if(curlen == 0 || tick > 0) {
+        sprintf(notes, "%%%d", initial_tick);
+    }
+
     *p++ = '\0';
 
     return 0;
 }
 
-void get_note(struct pmd* pmd, int note, int tick)
+void get_note(struct pmd* pmd, int note, int tick, int por_pre)
 {
     // o4c = 60
     const static char* key[] = {"c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b"};
@@ -76,10 +85,8 @@ void get_note(struct pmd* pmd, int note, int tick)
     int oct_diff;
     char beats[16];
 
-    if(pmd->porpd != 0 && note >= 0) {
-        int porpd = pmd->porpd;
-        pmd->porpd = 0;
-        get_note(pmd, note + porpd, tick);
+    if(por_pre == 0 && pmd->porsw == 1 && note >= 0) {
+        get_note(pmd, note + pmd->porpd, tick, 1);
     }
 
     if(tick > 0) {
@@ -101,7 +108,7 @@ void get_note(struct pmd* pmd, int note, int tick)
         }
         tick2beat(tick, beats);
         if(pmd->porsw) beats[0] = '\0';
-        mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, pmd->legato ? "&" : "");
+        mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, (!pmd->porsw && pmd->legato) ? "&" : "");
 
         if(pmd->porsw == 0) {
             pmd->tick = (pmd->tick + pmd->len) % TIMEBASE;
@@ -135,17 +142,19 @@ int get_drumname(int note, char* buffer, size_t size)
 void reset_part_ctx(struct pmd* pmd)
 {
     memset(pmd->stack, 0, sizeof pmd->stack);
-    pmd->tick = 0;
-    pmd->track_attr = 0;
     pmd->sp = 0;
     pmd->len = 4;
+    pmd->track_attr = 0;
+    pmd->legato = 0;
     pmd->oct = -1;
     pmd->porsw = 0;
     pmd->porpd = 0;
     pmd->porlen = 0;
+    pmd->return_addr = 0;
+    pmd->tick = 0;
+
     pmd->column = 0;
     pmd->newline = 0;
-    pmd->return_addr = 0;
 }
 
 int mml_vprintf(struct pmd* pmd, char* format, va_list ap)

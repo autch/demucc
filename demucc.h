@@ -64,7 +64,7 @@ int extract_drums(struct pmd* pmd);
 uint16_t read_u16(uint8_t** pp);
 uint8_t read_u8(uint8_t** pp);
 int tick2beat(int tick, char* notes);
-void get_note(struct pmd* pmd, int note, int tick);
+void get_note(struct pmd* pmd, int note, int tick, int por_pre);
 int get_drumname(int note, char* buffer, size_t size);
 void reset_part_ctx(struct pmd* pmd);
 int mml_printf(struct pmd* pmd, char* format, ...)
