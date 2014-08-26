@@ -76,7 +76,7 @@ void get_note(struct pmd* pmd, int note, int tick)
     int oct_diff;
     char beats[16];
 
-    if(pmd->porpd != 0) {
+    if(pmd->porpd != 0 && note >= 0) {
         int porpd = pmd->porpd;
         pmd->porpd = 0;
         get_note(pmd, note + porpd, tick);
