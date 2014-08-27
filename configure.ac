@@ -24,7 +24,12 @@ AC_TYPE_UINT8_T
 # Checks for library functions.
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
-AC_CHECK_FUNCS([memset])
+AC_CHECK_FUNCS([memset strtol])
+
+
+AS_IF([test "x`basename $CC`" = "xemcc"], [
+  AC_DEFINE([DEMUCC_NO_MAIN], 1, [Do not define main()])
+])
 
 AC_CONFIG_FILES([Makefile])
 
