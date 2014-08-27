@@ -30,7 +30,7 @@ uint8_t read_u8(uint8_t** pp)
     return t;
 }
 
-int tick2beat(int tick, char* notes)
+int tick2beat(struct pmd* pmd, int tick, char* notes)
 {
     int initial_tick = tick;
     char* p = notes;
@@ -38,24 +38,33 @@ int tick2beat(int tick, char* notes)
     int meas = 1;
     int b;
 
+    // 全音符より長い
+    if(tick > TIMEBASE || pmd->use_ticks) {
+        // mucc には ^ がないので直接指定するしかない
+        sprintf(notes, "%%%d", tick);
+        return 0;
+    }
+
     // n 分音符として割り切れるなら一発
     if(tick != 0) {
         b = TIMEBASE / tick;
-        if(b != 0 && TIMEBASE / b == tick && TIMEBASE % tick == 0) {
+        if(b != 0 && TIMEBASE / b == tick
+           && TIMEBASE % b == 0
+           && TIMEBASE % tick == 0) {
             sprintf(p, "%d", b);
             return 0;
         }
     }
     
     // 最大の音長を引く
-    while(tick != 0 && curlen != 0) {
+    while(tick > 0 && curlen != 0) {
         if(curlen <= tick) {
             tick -= curlen;
             p += sprintf(p, "%d", meas);
             break;
         }
-        curlen /= 2;
-        meas *= 2;
+        curlen >>= 1;
+        meas <<= 1;
     }
     // 残りを付点で足す
     while(tick > 0 && curlen != 0) {
@@ -63,16 +72,15 @@ int tick2beat(int tick, char* notes)
             tick -= curlen;
             *p++ = '.';
         }
-        curlen /= 2;
-        meas *= 2;
-    }
-
-    // これだけやっても割り切れなかった
-    if(curlen == 0 || tick > 0) {
-        sprintf(notes, "%%%d", initial_tick);
+        curlen >>= 1;
     }
 
     *p++ = '\0';
+
+    // これだけやっても割り切れなかった
+    if(curlen == 0 || tick != 0) {
+        sprintf(notes, "%%%d", initial_tick);
+    }
 
     return 0;
 }
@@ -106,7 +114,7 @@ void get_note(struct pmd* pmd, int note, int tick, int por_pre)
                 mml_printf(pmd, "o%d", oct);
             }
         }
-        tick2beat(tick, beats);
+        tick2beat(pmd, tick, beats);
         if(pmd->porsw) beats[0] = '\0';
         mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, (!pmd->porsw && pmd->legato) ? "&" : "");
 
@@ -165,7 +173,7 @@ int mml_vprintf(struct pmd* pmd, char* format, va_list ap)
     va_copy(aq, ap);
     required = vsnprintf(NULL, 0, format, aq);
     va_end(aq);
-    if(pmd->part >= 0 && (pmd->newline != 0 || pmd->column + required >= MML_COLUMNS)) {
+    if(pmd->part >= 0 && (pmd->newline != 0 || pmd->column + required >= pmd->mml_columns)) {
         ret = mmlbuf_append(pmd->mmlbuf, "\n%c ", 'A' + pmd->part);
         if(ret < 0) return ret;
         pmd->newline = 0;

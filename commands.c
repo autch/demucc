@@ -119,7 +119,7 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
         // portamento off
         char beats[16];
         pmd->porsw = 0;
-        tick2beat(pmd->porlen, beats);
+        tick2beat(pmd, pmd->porlen, beats);
         mml_printf(pmd, "}%s%s", beats, pmd->legato ? "&" : "");
 
         pmd->tick = (pmd->tick + pmd->porlen) % TIMEBASE;

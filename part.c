@@ -32,7 +32,7 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
                 char beats[16];
 
                 get_drumname(index, drumname, sizeof drumname);
-                tick2beat(pmd->len, beats);
+                tick2beat(pmd, pmd->len, beats);
                 mml_printf(pmd, "!%sg%s", drumname, beats);
                 
                 pmd->tick = (pmd->tick + pmd->len) % TIMEBASE;
@@ -77,3 +77,44 @@ int read_notes(struct pmd* pmd, uint8_t** pp)
     }
     return 0;
 }
+
+int extract_drums(struct pmd* pmd)
+{
+    uint16_t* pd = (uint16_t*)pmd->drums;
+    uint8_t* p;
+    int i = 0;
+    char drumname[DRUMNAME_MAX];
+
+    if(pmd->drums == pmd->buffer) {
+        return 0;
+    }
+
+    while(1) {
+        if((uint8_t*)pd >= pmd->buffer + pmd->buffer_size)
+            break;
+
+        get_drumname(i, drumname, sizeof drumname);
+
+        reset_part_ctx(pmd);
+        pmd->track_attr = TRATTR_DRUMS;
+        pmd->sp = 0;
+        pmd->len = 0;
+        pmd->part = -1;
+        mmlbuf_reset(pmd->mmlbuf);
+
+        mml_printf(pmd, "!!%sg ", drumname);
+    
+        p = pmd->buffer + *pd;
+        read_notes(pmd, &p);
+
+        printf("%s\n", mmlbuf_buf(pmd->mmlbuf));
+
+        pd++;
+        i++;
+    }
+
+    printf("\n");
+
+    return 0;
+}
+

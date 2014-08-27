@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#define LogL(format, ...)                                               \
+#define LogL(format, ...) \
     fprintf(stderr, ("%s:%s(%d): " format "\n"), __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 
 #define TPQN 24
@@ -27,6 +27,10 @@ struct mmlbuf {
 };
 
 struct pmd {
+    /* command line params */
+    int mml_columns;
+    int use_ticks; // instead of beats
+
     /* global context */
     uint8_t* buffer;
     long buffer_size;
@@ -56,14 +60,14 @@ struct pmd {
     int newline;
 };
 
-int read_notes(struct pmd* pmd, uint8_t** pp);
-int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp);
+/* part.c */
 int extract_drums(struct pmd* pmd);
+int read_notes(struct pmd* pmd, uint8_t** pp);
 
 /* util.c */
 uint16_t read_u16(uint8_t** pp);
 uint8_t read_u8(uint8_t** pp);
-int tick2beat(int tick, char* notes);
+int tick2beat(struct pmd* pmd, int tick, char* notes);
 void get_note(struct pmd* pmd, int note, int tick, int por_pre);
 int get_drumname(int note, char* buffer, size_t size);
 void reset_part_ctx(struct pmd* pmd);
