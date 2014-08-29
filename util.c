@@ -63,8 +63,7 @@ int tick2beat(struct pmd* pmd, int tick, char* notes)
             p += sprintf(p, "%d", meas);
             break;
         }
-        curlen >>= 1;
-        meas <<= 1;
+        curlen = TIMEBASE / ++meas;
     }
     // 残りを付点で足す
     while(tick > 0 && curlen != 0) {
