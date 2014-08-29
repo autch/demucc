@@ -71,6 +71,9 @@ int tick2beat(struct pmd* pmd, int tick, char* notes)
         if(curlen <= tick) {
             tick -= curlen;
             *p++ = '.';
+        } else {
+            // 付点で割り切れない→仕方ないので % で表記
+            break;
         }
         curlen >>= 1;
     }
@@ -116,7 +119,10 @@ void get_note(struct pmd* pmd, int note, int tick, int por_pre)
         }
         tick2beat(pmd, tick, beats);
         if(pmd->porsw) beats[0] = '\0';
-        mml_printf(pmd, "%s%s%s", (note == -1) ? "r" : key[k], beats, (!pmd->porsw && pmd->legato) ? "&" : "");
+        mml_printf(pmd, "%s%s%s",
+                   (note == -1) ? "r" : key[k],
+                   beats,
+                   (!pmd->porsw && pmd->legato) ? "&" : "");
 
         if(pmd->porsw == 0) {
             pmd->tick = (pmd->tick + pmd->len) % TIMEBASE;
