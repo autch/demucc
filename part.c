@@ -11,7 +11,7 @@
  */
 int read_notes(struct pmd* pmd, uint8_t** pp)
 {
-    uint8_t n;
+    int n;
     while(1) {
         if(pmd->return_addr != 0
            && (*pp - pmd->buffer) == pmd->return_addr) {
