@@ -113,6 +113,9 @@ int read_commands(struct pmd* pmd, uint8_t n, uint8_t** pp)
         // portamento on
         mml_printf(pmd, "{");
         pmd->porsw = 1;
+        if(pmd->porlen != pmd->len) {
+            pmd->porlen = pmd->len;
+        }
         break;
     case 0x0f:
     {
